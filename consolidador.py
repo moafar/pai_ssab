@@ -108,4 +108,5 @@ libro_trabajo.save(archivo_excel)
 # Cerrar el archivo
 libro_trabajo.close()
 
+
 print("Terminado. Los datos se guardaron en el archivo consolidado.xlsx")
