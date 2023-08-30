@@ -1,0 +1,112 @@
+function onOpen() {
+
+  SpreadsheetApp.getUi()
+    .createMenu('PAI SSAB')
+    .addItem('Importar correos nuevos', 'getCorreos')
+    .addItem('Acerca de', 'acercaDe')
+
+    .addToUi();
+
+}
+
+function getCorreos() {
+  //Consulta la bandeja de entrada del correo y descarga aquellos mensajes marcados con "@descargar"
+
+  SpreadsheetApp.getActiveSpreadsheet().toast('Importando correos...', 'Aviso');
+
+  var labelRecibidos = GmailApp.getUserLabelByName("@descargar");
+  var labelDescargados = GmailApp.getUserLabelByName("@descargados");
+
+  var threads = labelRecibidos.getThreads();
+
+  for (var i = threads.length - 1; i >= 0; i--) {
+
+    var messages = threads[i].getMessages();
+
+    for (var j = 0; j < messages.length; j++) {
+
+      var message = messages[j];
+      extractDetails(message);
+
+    }
+
+    //Inactivos en pruebas.  Quitar el comment para PRD ***
+    threads[i].removeLabel(labelRecibidos);
+    labelDescargados.addToThread(threads[i]);
+
+  }
+
+  SpreadsheetApp.getActiveSpreadsheet().toast('¡Importación terminada!', '* Hecho *');
+
+}
+
+
+function extractDetails(message) {
+  //Extrae los detalles de un mensaje recibido como parámetro y los graba en la sábana
+
+  var dateTime = message.getDate();
+  var subjectText = message.getSubject();
+  var senderDetails = message.getFrom();
+  var bodyContents = message.getPlainBody();
+  var idMensaje = message.getId();
+
+  getAdjuntos(message);
+  
+  var email = extraerCorreo(message);
+
+  var hojaActivos = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Activos");
+
+  hojaActivos.appendRow([dateTime, senderDetails, email, idMensaje, subjectText, bodyContents]);
+  
+
+  //Inactivo para pruebas.  Quitar comment para PRD ***
+  //GmailApp.markMessageRead(message);
+
+}
+
+
+function getAdjuntos(message) {
+  //Descarga los adjuntos al mensaje de correo que recibe como parámetro y los guarda en Drive en la carpeta indicada
+
+  Utilities.sleep(1000);
+  var folderAdjuntos = DriveApp.getFolderById('1abl2enVDxxlaavP9AiRMstI19NUkDtSV');
+
+  var attachments = message.getAttachments();
+
+  for (var i = 0; i < attachments.length; i++) {
+    var attachment = attachments[i];
+    var attachmentName = attachment.getName();
+
+    if (attachmentName.endsWith("xlsm")){
+
+      var attachmentBlob = attachment.copyBlob();
+      var fileAttachment = DriveApp.createFile(attachmentBlob);
+      folderAdjuntos.createFile(fileAttachment);  
+      var j = i + 1;
+      SpreadsheetApp.getActiveSpreadsheet().toast("Descargando: " + attachmentName, 'Aviso');
+    }
+
+  }
+
+}
+
+
+
+function extraerCorreo(mensaje) {
+  //Aísla la dirección email de la celda especificada en "data[i][1]"
+
+  var remitente = mensaje.getFrom();
+  var correo = remitente.match(/\S+@\S+\.\S+/g);
+  var email = correo[0];
+  email = email.replace("<", "");
+  email = email.replace(">", "");
+  return email;
+
+}
+
+function acercaDe() {
+  //Créditos 
+
+  SpreadsheetApp.getActiveSpreadsheet().toast('Por: Rafael Ortiz Martínez - Consultor en salud digital \n rortiz276@unab.edu.co', 'PAI Script v2.0');
+
+}
